@@ -82,7 +82,7 @@ class API:
 
         if not (dbres == None):
             # Send message
-			snd_phone, recv_phone, amount = dbres
+            snd_phone, recv_phone, amount = dbres
             snd_id = self.db.get_reverse_assoc(snd_phone)[0]
             recv_id = self.db.get_reverse_assoc(recv_phone)[0]
             self.send_message(snd_id, f"Заявка на передачу {amount} BCR одобрена. Вы отправили {amount} BCR пользователю {recv_phone}. Не забудьте оплатить налог самозанятого с потраченной суммы!")
@@ -100,7 +100,7 @@ class API:
         if result:
             # Send message
             recv_phone, amount = result
-			snd_id = self.db.get_reverse_assoc(recv_phone)[0]
+            snd_id = self.db.get_reverse_assoc(recv_phone)[0]
             self.send_message(snd_id, f"Заявка на передачу {amount} BCR, пользователю {recv_phone} отклонена")
             return jsonify({'message': 'Action removed successfully'})
         else:
