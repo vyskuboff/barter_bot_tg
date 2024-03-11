@@ -85,7 +85,7 @@ class API:
             snd_phone, recv_phone, amount = dbres
             snd_id = self.db.get_reverse_assoc(snd_phone)[0]
             recv_id = self.db.get_reverse_assoc(recv_phone)[0]
-            self.send_message(snd_id, f"Заявка на передачу {amount} BCR одобрена. Вы отправили {amount} BCR пользователю {recv_phone}. Не забудьте оплатить налог самозанятого с потраченной суммы!")
+            self.send_message(snd_id, f"Заявка на передачу BCR одобрена. Вы отправили {amount} BCR пользователю {recv_phone}. Не забудьте оплатить налог самозанятого с потраченной суммы!")
             self.send_message(recv_id, f"Вы получили {amount} BCR от пользователя {snd_phone}")
             return jsonify({'message': 'Action moved to actions successfully'})
         else:
