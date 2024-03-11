@@ -82,10 +82,11 @@ class API:
 
         if not (dbres == None):
             # Send message
+			snd_phone, recv_phone, amount = dbres
             snd_id = self.db.get_reverse_assoc(dbres[0])[0]
             recv_id = self.db.get_reverse_assoc(dbres[1])[0]
-            self.send_message(snd_id, "Заявка на передачу BCR одобрена. Вы отправили средства пользователю. Не забудьте оплатить налог самозанятого с потраченной суммы!")
-            self.send_message(recv_id, "Вы получили BCR от пользователя")
+            self.send_message(snd_id, f"Заявка на передачу {amount} BCR одобрена. Вы отправили {amount} BCR пользователю {recv_phone}. Не забудьте оплатить налог самозанятого с потраченной суммы!")
+            self.send_message(recv_id, f"Вы получили {amount} BCR от пользователя {snd_phone}")
             return jsonify({'message': 'Action moved to actions successfully'})
         else:
             return jsonify({'error': 'Action ID not found'}), 400
@@ -95,11 +96,12 @@ class API:
         md5 = await self.auth(request.json.get('md5'))
         if not md5:
             return jsonify({'error': 'Failed to authenticate'}), 401
-        recv_phone = self.db.remove_pending_action(id)
-        if recv_phone:
+        result = self.db.remove_pending_action(id)
+        if result:
             # Send message
-            snd_id = self.db.get_reverse_assoc(recv_phone)[0]
-            self.send_message(snd_id, "Заявка на передачу средств отклонена")
+            recv_phone, amount = result
+			snd_id = self.db.get_reverse_assoc(recv_phone)[0]
+            self.send_message(snd_id, f"Заявка на передачу {amount} BCR, пользователю {recv_phone} отклонена")
             return jsonify({'message': 'Action removed successfully'})
         else:
             return jsonify({'error': 'Action ID not found'}), 400
