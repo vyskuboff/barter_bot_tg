@@ -29,6 +29,13 @@ class TelegramBot:
         ]
     )
 
+    
+    async def actions_command(self, update: Update, context: CallbackContext) -> None:
+        await update.message.reply_text(
+            "Используйте кнопки ниже для выполнения действий",
+            reply_markup=self.op_markup
+        )
+	
     # Command handler for /start command
     async def start(self, update: Update, context: CallbackContext) -> None:
         # Check if the user is already registered
@@ -196,7 +203,10 @@ class TelegramBot:
     def run(self):
         # Add command handlers
         self.application.add_handler(CommandHandler("start", self.start))
-
+		
+        # Add command handlers
+        self.application.add_handler(CommandHandler("balance_bcr", self.actions_command))
+		
         # Add message handler for receiving phone number for authentication
         self.application.add_handler(MessageHandler(filters.CONTACT, self.phone_auth))
 
