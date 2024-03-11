@@ -99,12 +99,13 @@ class DatabaseManager:
         # Self-explanatory
         with self.lock:
 
-            self.cursor.execute('SELECT user_phone_number FROM pending_actions WHERE id=%s', (id,))
-            recv_phone = self.cursor.fetchone()
-            if recv_phone:
+            self.cursor.execute('SELECT user_phone_number, amount FROM pending_actions WHERE id=%s', (id,))
+            result = self.cursor.fetchone()
+            if result:
+                recv_phone, amount = result
                 self.cursor.execute('DELETE FROM pending_actions WHERE id=%s', (id,))
                 self.conn.commit()
-                return recv_phone[0]
+                return recv_phone, amount
             return None
 
     def apply_pending_action(self, id, md5):
@@ -130,7 +131,7 @@ class DatabaseManager:
                 self.cursor.execute('INSERT INTO actions (user_phone_number, receiver_phone_number, amount, md5) VALUES (%s, %s, %s, %s)', (user_phone_number, receiver_phone_number, amount, md5))
                 self.conn.commit()
 
-                return (user_phone_number, receiver_phone_number)
+                return (user_phone_number, receiver_phone_number, amount)
             return None
 
     def get_last_md5(self):
