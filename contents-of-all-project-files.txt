@@ -83,10 +83,11 @@ class API:
 
         if not (dbres == None):
             # Send message
+			snd_phone, recv_phone, amount = dbres
             snd_id = self.db.get_reverse_assoc(dbres[0])[0]
             recv_id = self.db.get_reverse_assoc(dbres[1])[0]
-            self.send_message(snd_id, "Заявка на передачу BCR одобрена. Вы отправили средства пользователю. Не забудьте оплатить налог самозанятого с потраченной суммы!")
-            self.send_message(recv_id, "Вы получили BCR от пользователя")
+            self.send_message(snd_id, f"Заявка на передачу {amount} BCR одобрена. Вы отправили {amount} BCR пользователю {recv_phone}. Не забудьте оплатить налог самозанятого с потраченной суммы!")
+            self.send_message(recv_id, f"Вы получили {amount} BCR от пользователя {snd_phone}")
             return jsonify({'message': 'Action moved to actions successfully'})
         else:
             return jsonify({'error': 'Action ID not found'}), 400
@@ -96,11 +97,12 @@ class API:
         md5 = await self.auth(request.json.get('md5'))
         if not md5:
             return jsonify({'error': 'Failed to authenticate'}), 401
-        recv_phone = self.db.remove_pending_action(id)
-        if recv_phone:
+        result = self.db.remove_pending_action(id)
+        if result:
             # Send message
-            snd_id = self.db.get_reverse_assoc(recv_phone)[0]
-            self.send_message(snd_id, "Заявка на передачу средств отклонена")
+            recv_phone, amount = result
+			snd_id = self.db.get_reverse_assoc(recv_phone)[0]
+            self.send_message(snd_id, f"Заявка на передачу {amount} BCR, пользователю {recv_phone} отклонена")
             return jsonify({'message': 'Action removed successfully'})
         else:
             return jsonify({'error': 'Action ID not found'}), 400
@@ -108,6 +110,7 @@ class API:
     def run(self):
         from waitress import serve
         serve(self.app, host="0.0.0.0", port=5000)
+
 
 
 bot.py
@@ -142,13 +145,6 @@ class TelegramBot:
         ]
     )
 
-    
-    async def actions_command(self, update: Update, context: CallbackContext) -> None:
-        await update.message.reply_text(
-            "Используйте кнопки ниже для выполнения действий",
-            reply_markup=self.op_markup
-        )
-	
     # Command handler for /start command
     async def start(self, update: Update, context: CallbackContext) -> None:
         # Check if the user is already registered
@@ -316,10 +312,7 @@ class TelegramBot:
     def run(self):
         # Add command handlers
         self.application.add_handler(CommandHandler("start", self.start))
-		
-        # Add command handlers
-        self.application.add_handler(CommandHandler("balance_bcr", self.actions_command))
-		
+
         # Add message handler for receiving phone number for authentication
         self.application.add_handler(MessageHandler(filters.CONTACT, self.phone_auth))
 
@@ -331,7 +324,6 @@ class TelegramBot:
 
         # Start the bot
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
-
 
 
 config.py
@@ -440,12 +432,13 @@ class DatabaseManager:
         # Self-explanatory
         with self.lock:
 
-            self.cursor.execute('SELECT user_phone_number FROM pending_actions WHERE id=%s', (id,))
-            recv_phone = self.cursor.fetchone()
-            if recv_phone:
+            self.cursor.execute('SELECT user_phone_number, amount FROM pending_actions WHERE id=%s', (id,))
+            result = self.cursor.fetchone()
+            if result:
+                recv_phone, amount = result
                 self.cursor.execute('DELETE FROM pending_actions WHERE id=%s', (id,))
                 self.conn.commit()
-                return recv_phone[0]
+                return recv_phone, amount
             return None
 
     def apply_pending_action(self, id, md5):
@@ -471,7 +464,7 @@ class DatabaseManager:
                 self.cursor.execute('INSERT INTO actions (user_phone_number, receiver_phone_number, amount, md5) VALUES (%s, %s, %s, %s)', (user_phone_number, receiver_phone_number, amount, md5))
                 self.conn.commit()
 
-                return (user_phone_number, receiver_phone_number)
+                return (user_phone_number, receiver_phone_number, amount)
             return None
 
     def get_last_md5(self):
@@ -479,6 +472,7 @@ class DatabaseManager:
         with self.lock:
             self.cursor.execute('SELECT md5 FROM actions ORDER BY id DESC LIMIT 1')
             return self.cursor.fetchone()
+
 
 
 main.py
